@@ -308,5 +308,5 @@ void NodeManager::setIndexKeySize(unsigned long newIndexKeySize) {
     this->INDEX_KEY_SIZE = newIndexKeySize;
 }
 unsigned int NodeManager::nextPropertyIndex = 0;
-std::string NodeManager::NODE_DB_PATH = "streamStore/g{}_p{}.db";
+std::string NodeManager::NODE_DB_PATH = "/home/sandaruwan/ubuntu/software/jasminegraph/streamStore/g{}_p{}.db";
 const std::string NodeManager::FILE_MODE = "app";  // for appending to existing DB

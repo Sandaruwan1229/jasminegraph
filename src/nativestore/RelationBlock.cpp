@@ -356,5 +356,5 @@ NodeBlock* RelationBlock::getDestination() {
 const unsigned long RelationBlock::BLOCK_SIZE = RelationBlock::RECORD_SIZE * 11;
 // One relation block holds 11 recods such as source addres, destination address, source next relation address etc.
 // and one record is typically 4 bytes (size of unsigned int)
-std::string RelationBlock::DB_PATH = "streamStore/relations.db";
+std::string RelationBlock::DB_PATH = "/home/sandaruwan/ubuntu/software/jasminegraph/streamStore/relations.db";
 std::fstream* RelationBlock::relationsDB = NULL;

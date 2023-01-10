@@ -19,7 +19,9 @@ limitations under the License.
 #include "../../util/logger/Logger.h"
 
 Logger property_link_logger;
-
+unsigned int PropertyLink::nextPropertyIndex = 1;  // Starting with 1 because of the 0 and '\0' differentiation issue
+std::string PropertyLink::DB_PATH = "/home/sandaruwan/ubuntu/software/jasminegraph/streamStore/properties.db";
+std::fstream* PropertyLink::propertiesDB = NULL;
 PropertyLink::PropertyLink(unsigned int propertyBlockAddress) : blockAddress(propertyBlockAddress) {
     if (propertyBlockAddress > 0) {
         this->propertiesDB->seekg(propertyBlockAddress);
@@ -178,6 +180,4 @@ PropertyLink* PropertyLink::get(unsigned int propertyBlockAddress) {
     }
     return pl;
 }
-unsigned int PropertyLink::nextPropertyIndex = 1;  // Starting with 1 because of the 0 and '\0' differentiation issue
-std::string PropertyLink::DB_PATH = "streamStore/properties.db";
-std::fstream* PropertyLink::propertiesDB = NULL;
+
