@@ -15,7 +15,7 @@ limitations under the License.
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
-#include "../../centralstore/incremental/NodeManager.h"
+#include "../../nativestore/NodeManager.h"
 #ifndef Incremental_LocalStore
 #define Incremental_LocalStore
 
@@ -25,9 +25,12 @@ class JasmineGraphIncrementalLocalStore
    public:
     GraphConfig gc;
     NodeManager *nm;
+    std::string addNodeFromString(std::string edgeString);
     std::string addEdgeFromString(std::string edgeString);
-    static std::pair<std::string, unsigned int> getIDs(std::string edgeString );
-    JasmineGraphIncrementalLocalStore(unsigned int graphID = 0, unsigned int partitionID = 0 );
+    static std::pair<std::string, std::string> getIDs(std::string edgeString );
+    JasmineGraphIncrementalLocalStore(unsigned int graphID , unsigned int partitionID );
+
+    std::string addCentralEdgeFromString(std::string edgeString);
 };
 
 #endif

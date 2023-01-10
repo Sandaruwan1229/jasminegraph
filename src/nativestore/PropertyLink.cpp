@@ -16,7 +16,7 @@ limitations under the License.
 #include <sstream>
 #include <vector>
 
-#include "../../util/logger/Logger.h"
+#include "../util/logger/Logger.h"
 
 Logger property_link_logger;
 unsigned int PropertyLink::nextPropertyIndex = 1;  // Starting with 1 because of the 0 and '\0' differentiation issue

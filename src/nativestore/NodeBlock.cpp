@@ -16,7 +16,7 @@ limitations under the License.
 #include <sstream>
 #include <vector>
 
-#include "../../util/logger/Logger.h"
+#include "../util/logger/Logger.h"
 #include "RelationBlock.h"
 
 Logger node_block_logger;
@@ -117,10 +117,67 @@ bool NodeBlock::updateRelation(RelationBlock* newRelation, bool relocateHead) {
     return false;
 }
 
+bool NodeBlock::updateCentralRelation(RelationBlock* newRelation, bool relocateHead) {
+    unsigned int edgeReferenceAddress = newRelation->addr;
+    unsigned int thisAddress = this->addr;
+    RelationBlock* currentHead = this->getCentralRelationHead();
+    if (relocateHead) {  // Insert new relation link to the head of the link list
+        if (currentHead) {
+            if (thisAddress == currentHead->source.address) {
+                currentHead->setPreviousSource(newRelation->addr);
+            } else if (thisAddress == currentHead->destination.address) {
+                currentHead->setPreviousDestination(newRelation->addr);
+            } else {
+                throw std::to_string(thisAddress) +
+                      " relation head does not contain current node in its source or destination";
+            }
+            if (thisAddress == newRelation->source.address) {
+                newRelation->setNextSource(currentHead->addr);
+            } else if (thisAddress == newRelation->destination.address) {
+                newRelation->setNextDestination(currentHead->addr);
+            } else {
+                throw std::to_string(thisAddress) +
+                      " new relation does not contain current node in its source or destination";
+            }
+        }
+        return this->setRelationHead(*newRelation);
+    } else {
+        RelationBlock* currentRelation = currentHead;
+        while (currentRelation != NULL) {
+            if (currentRelation->source.address == this->addr) {
+                if (currentRelation->source.nextRelationId == 0) {
+                    return currentRelation->setNextSource(edgeReferenceAddress);
+                } else {
+                    currentRelation = currentRelation->nextSource();
+                }
+            } else if (!this->isDirected && currentRelation->destination.address == this->addr) {
+                if (currentRelation->destination.nextRelationId == 0) {
+                    return currentRelation->setNextDestination(edgeReferenceAddress);
+                } else {
+                    currentRelation = currentRelation->nextDestination();
+                }
+            } else {
+                node_block_logger.warn("Invalid relation block" + std::to_string(currentRelation->addr));
+            }
+        }
+        return false;
+    }
+    return false;
+}
+
+
 RelationBlock* NodeBlock::getRelationHead() {
     RelationBlock* relationsHead = NULL;
     if (this->edgeRef != 0) {
         relationsHead = RelationBlock::get(this->edgeRef);
+    }
+    return relationsHead;
+};
+
+RelationBlock* NodeBlock::getCentralRelationHead() {
+    RelationBlock* relationsHead = NULL;
+    if (this->edgeRef != 0) {
+        relationsHead = RelationBlock::getCentral(this->edgeRef);
     }
     return relationsHead;
 };

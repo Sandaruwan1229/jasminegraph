@@ -161,6 +161,7 @@ inline std::string trim_right_copy(
 inline std::string trim_left_copy(
         const std::string &s,
         const std::string &delimiters = " \f\n\r\t\v") {
+
     return s.substr(s.find_first_not_of(delimiters));
 }
 

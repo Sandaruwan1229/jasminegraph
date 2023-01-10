@@ -34,6 +34,8 @@ class DataPublisher {
     void publish(std::string);
     void publish_relation(std::string);
     ~DataPublisher();
+
+    void publish_central_relation(std::string message);
 };
 
 #endif  // !Worker_data_publisher

@@ -17,11 +17,11 @@ add_executable(JasmineGraph main.cpp src/server/JasmineGraphServer.cpp src/serve
         src/partitioner/local/RDFPartitioner.h src/backend/JasmineGraphBackend.cpp src/backend/JasmineGraphBackend.h
         src/backend/JasmineGraphBackendProtocol.cpp src/backend/JasmineGraphBackendProtocol.h src/util/logger/Logger.h src/util/logger/Logger.cpp
         src/server/JasmineGraphInstanceProtocol.cpp
-        src/centralstore/incremental/NodeManager.cpp
-        src/centralstore/incremental/NodeBlock.cpp
-        src/centralstore/incremental/PropertyLink.cpp
-        src/centralstore/incremental/RelationBlock.cpp
-        src/centralstore/incremental/DataPublisher.cpp
+        src/nativestore/NodeManager.cpp
+        src/nativestore/NodeBlock.cpp
+        src/nativestore/PropertyLink.cpp
+        src/nativestore/RelationBlock.cpp
+        src/nativestore/DataPublisher.cpp
         src/partitioner/stream/Partition.cpp
         src/localstore/incremental/JasmineGraphIncrementalLocalStore.cpp
         src/server/JasmineGraphInstanceProtocol.h src/server/JasmineGraphInstanceFileTransferService.cpp src/server/JasmineGraphInstanceFileTransferService.h
@@ -47,7 +47,6 @@ if(CMAKE_ENABLE_DEBUG)
     message(STATUS "DEBUG enabled")
     target_compile_options(JasmineGraph PRIVATE -g)
 endif()
-
 #target_link_libraries(JasmineGraph /usr/local/lib/libmetis.so)
 #target_link_libraries(JasmineGraph /usr/local/lib/libxerces-c-3.2.so)
 #TODO: Need to install the library separately
@@ -63,16 +62,16 @@ include_directories("$ENV{HOME}/software/jsoncpp/include")
 include_directories("$ENV{HOME}/software/cppkafka/include")
 include_directories("$ENV{HOME}/software/nlohmann_json/include")
 
-target_link_libraries(JasmineGraph /usr/local/lib/libmetis.a)
-target_link_libraries(JasmineGraph $ENV{HOME}/software/xerces-c-3.2.2/lib/libxerces-c.so)
-target_link_libraries(JasmineGraph $ENV{HOME}/software/flatbuffers/libflatbuffers.a)
+target_link_libraries(JasmineGraph /home/sandaruwan/local/lib/libmetis.so)
+target_link_libraries(JasmineGraph /usr/local/lib/libxerces-c.so)
+target_link_libraries(JasmineGraph /home/sandaruwan/ubuntu/software/flatbuffers/libflatbuffers.a)
 include_directories("$ENV{HOME}/software/xerces-c-3.2.2/include")
-target_link_libraries(JasmineGraph $ENV{HOME}/software/jsoncpp/build/debug/src/lib_json/libjsoncpp.a)
-target_link_libraries(JasmineGraph $ENV{HOME}/software/cppkafka/build/usr/local/lib/libcppkafka.so)
+target_link_libraries(JasmineGraph /usr/local/lib/libjsoncpp.a)
+target_link_libraries(JasmineGraph /usr/local/lib/libcppkafka.so)
 
 set(PYTHON_EXECUTABLE "/usr/bin/python3.5")
 set(PYTHON_INCLUDE_DIR "/usr/include/python3.5m")
-set(PYTHON_LIBRARIES "/usr/lib/x86_64-linux-gnu/libpython3.5m.so")
+set(PYTHON_LIBRARIES "/usr/local/lib/libpython3.5m.a")
 
 include_directories(${PYTHON_INCLUDE_DIRS})
 include_directories(${PYTHON_DIRECTORIES})

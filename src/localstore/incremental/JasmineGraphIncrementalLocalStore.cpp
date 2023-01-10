@@ -16,7 +16,7 @@ limitations under the License.
 #include <memory>
 #include <stdexcept>
 
-#include "../../centralstore/incremental/RelationBlock.h"
+#include "../../nativestore/RelationBlock.h"
 #include "../../util/logger/Logger.h"
 
 Logger incremental_localstore_logger;
@@ -29,12 +29,25 @@ JasmineGraphIncrementalLocalStore::JasmineGraphIncrementalLocalStore(unsigned in
     this->nm = new NodeManager(gc);
 };
 
-std::pair<std::string, unsigned int> JasmineGraphIncrementalLocalStore::getIDs(std::string edgeString) {
+std::pair<std::string, std::string> JasmineGraphIncrementalLocalStore::getIDs(std::string edgeString) {
     try {
         auto edgeJson = json::parse(edgeString);
-        if (edgeJson.contains("properties")) {
-            auto edgeProperties = edgeJson["properties"];
-            return {edgeProperties["graphId"], 0};
+        if (edgeJson.contains("source") && edgeJson.contains("destination")){
+            auto sourceJson = edgeJson["source"];
+            if (sourceJson.contains("properties")) {
+                auto edgeProperties = sourceJson["properties"];
+                std::string graphId = std::string(edgeProperties["graphId"]);
+                std::string pId = to_string(sourceJson["pid"]);
+                return {graphId, pId};
+            }
+        }else{
+            if (edgeJson.contains("properties")) {
+                auto edgeProperties = edgeJson["properties"];
+                std::string graphId = std::string(edgeProperties["graphId"]);
+                std::string pId = to_string(edgeJson["pid"]);
+
+                return {graphId, pId};
+            }
         }
 
     } catch (const std::exception&) {  // TODO tmkasun: Handle multiple types of exceptions
@@ -42,6 +55,22 @@ std::pair<std::string, unsigned int> JasmineGraphIncrementalLocalStore::getIDs(s
             "Error while processing edge data = " + edgeString +
                 "Could be due to JSON parsing error or error while persisting the data to disk",
             "error");
+    }
+}
+
+std::string JasmineGraphIncrementalLocalStore::addNodeFromString(std::string edgeString) {
+    try {
+        auto edgeJson = json::parse(edgeString);
+        std::string sId = std::string(edgeJson["id"]);
+        NodeBlock* nodeBlock = this->nm->addNode(sId);
+    }
+    catch (const std::exception&) {  // TODO tmkasun: Handle multiple types of exceptions
+        incremental_localstore_logger.log(
+                "Error while processing edge data = " + edgeString +
+                "Could be due to JSON parsing error or error while persisting the data to disk",
+                "error");
+        incremental_localstore_logger.log("Error malformed JSON attributes!", "error");
+        // TODO tmkasun: handle JSON errors
     }
 }
 
@@ -53,6 +82,8 @@ std::string JasmineGraphIncrementalLocalStore::addEdgeFromString(std::string edg
         auto destinationJson = edgeJson["destination"];
 
         std::string sId = std::string(sourceJson["id"]);
+//        NodeBlock* nodeBlock = this->nm->addNode(sId);
+
         std::string dId = std::string(destinationJson["id"]);
 
         RelationBlock* newRelation = this->nm->addEdge({sId, dId});
@@ -85,12 +116,69 @@ std::string JasmineGraphIncrementalLocalStore::addEdgeFromString(std::string edg
         }
 
         incremental_localstore_logger.log("Added successfully!", "Info");
-    } catch (const std::exception&) {  // TODO tmkasun: Handle multiple types of exceptions
+    }
+    catch (const std::exception&) {  // TODO tmkasun: Handle multiple types of exceptions
         incremental_localstore_logger.log(
-            "Error while processing edge data = " + edgeString +
+                "Error while processing edge data = " + edgeString +
                 "Could be due to JSON parsing error or error while persisting the data to disk",
-            "error");
+                "error");
         incremental_localstore_logger.log("Error malformed JSON attributes!", "error");
         // TODO tmkasun: handle JSON errors
     }
+
 }
+
+std::string JasmineGraphIncrementalLocalStore::addCentralEdgeFromString(std::string edgeString) {
+    try {
+        auto edgeJson = json::parse(edgeString);
+
+        auto sourceJson = edgeJson["source"];
+        auto destinationJson = edgeJson["destination"];
+
+        std::string sId = std::string(sourceJson["id"]);
+//        NodeBlock* nodeBlock = this->nm->addNode(sId);
+
+        std::string dId = std::string(destinationJson["id"]);
+
+        RelationBlock* newRelation = this->nm->addCentralEdge({sId, dId});
+        if (!newRelation) {
+            return "";
+        }
+        char value[PropertyLink::MAX_VALUE_SIZE] = {};
+
+//        if (edgeJson.contains("properties")) {
+//            auto edgeProperties = edgeJson["properties"];
+//            for (auto it = edgeProperties.begin(); it != edgeProperties.end(); it++) {
+//                strcpy(value, it.value().get<std::string>().c_str());
+//                newRelation->addProperty(std::string(it.key()), &value[0]);
+//            }
+//        }
+//
+//        if (sourceJson.contains("properties")) {
+//            auto sourceProps = sourceJson["properties"];
+//            for (auto it = sourceProps.begin(); it != sourceProps.end(); it++) {
+//                strcpy(value, it.value().get<std::string>().c_str());
+//                newRelation->getSource()->addProperty(std::string(it.key()), &value[0]);
+//            }
+//        }
+//        if (destinationJson.contains("properties")) {
+//            auto destProps = destinationJson["properties"];
+//            for (auto it = destProps.begin(); it != destProps.end(); it++) {
+//                strcpy(value, it.value().get<std::string>().c_str());
+//                newRelation->getDestination()->addProperty(std::string(it.key()), &value[0]);
+//            }
+//        }
+
+        incremental_localstore_logger.log("Added successfully!", "Info");
+    }
+    catch (const std::exception&) {  // TODO tmkasun: Handle multiple types of exceptions
+        incremental_localstore_logger.log(
+                "Error while processing edge data = " + edgeString +
+                "Could be due to JSON parsing error or error while persisting the data to disk",
+                "error");
+        incremental_localstore_logger.log("Error malformed JSON attributes!", "error");
+        // TODO tmkasun: handle JSON errors
+    }
+
+}
+

@@ -70,6 +70,10 @@ class NodeBlock {
     std::list<NodeBlock> getEdges();
     bool setRelationHead(RelationBlock);
     RelationBlock *searchRelation(NodeBlock);
+
+    bool updateCentralRelation(RelationBlock *newRelation, bool relocateHead  = true);
+
+    RelationBlock *getCentralRelationHead();
 };
 
 #endif

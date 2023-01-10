@@ -2171,10 +2171,10 @@ void *instanceservicesession(void *dummyPt) {
             } else {
                 instance_logger.log("Error while reading content length", "error");
             }
-            
+
             auto graphIdPartitionId = JasmineGraphIncrementalLocalStore::getIDs(nodeString);
             std::string graphId = graphIdPartitionId.first;
-            std::string partitionId = std::to_string(graphIdPartitionId.second);
+            std::string partitionId = graphIdPartitionId.second;
             std::string graphIdentifier = graphId + "_" + partitionId;
             JasmineGraphIncrementalLocalStore* incrementalLocalStoreInstance;
             
@@ -2184,7 +2184,19 @@ void *instanceservicesession(void *dummyPt) {
             } else {
                 incrementalLocalStoreInstance = incrementalLocalStoreMap[graphIdentifier];
             }
-            incrementalLocalStoreInstance->addEdgeFromString(nodeString);
+            auto edgeJson = json::parse(nodeString);
+            if (edgeJson.contains("source") && edgeJson.contains("destination")){
+                auto sourceJson = edgeJson["source"];
+                auto destinationJson = edgeJson["destination"];
+                if ((int) sourceJson["pid"] == (int) destinationJson["pid"]){
+                    incrementalLocalStoreInstance->addEdgeFromString(nodeString);
+                }else{
+                    incrementalLocalStoreInstance->addCentralEdgeFromString(nodeString);
+                }
+            }
+            else{
+                incrementalLocalStoreInstance->addNodeFromString(nodeString);
+            }
             send(connFd, JasmineGraphInstanceProtocol::GRAPH_STREAM_END_OF_EDGE.c_str(),
                  JasmineGraphInstanceProtocol::GRAPH_STREAM_END_OF_EDGE.size(), 0);
             instance_logger.log("Sent CRLF string to mark the end", "info");

@@ -17,8 +17,8 @@ limitations under the License.
 #include <mutex>
 #include <exception>
 
-#include "../../util/Utils.h"
-#include "../../util/logger/Logger.h"
+#include "../util/Utils.h"
+#include "../util/logger/Logger.h"
 #include "NodeBlock.h"  // To setup node DB
 #include "PropertyLink.h"
 #include "RelationBlock.h"
@@ -52,6 +52,8 @@ NodeManager::NodeManager(GraphConfig gConfig) {
         new std::fstream(dbPrefix + "_properties.db", std::ios::in | std::ios::out | openMode | std::ios::binary);
     RelationBlock::relationsDB =
         new std::fstream(dbPrefix + "_relations.db", std::ios::in | std::ios::out | openMode | std::ios::binary);
+    RelationBlock::centralrelationsDB =
+            new std::fstream(dbPrefix + "_central_relations.db", std::ios::in | std::ios::out | openMode | std::ios::binary);
     // TODO (tmkasun): set PropertyLink nextPropertyIndex after validating by modulus check from file number of bytes
 
     if (dbSize(nodesDBPath) % NodeBlock::BLOCK_SIZE != 0) {
@@ -116,6 +118,26 @@ RelationBlock *NodeManager::addRelation(NodeBlock source, NodeBlock destination)
     return newRelation;
 }
 
+RelationBlock *NodeManager::addCentralRelation(NodeBlock source, NodeBlock destination) {
+    RelationBlock *newRelation = NULL;
+    if (source.edgeRef == 0 || destination.edgeRef == 0 ||
+        !source.searchRelation(destination)) {  // certainly a new relation block needed
+        newRelation = RelationBlock::addCentral(source, destination);
+        if (newRelation) {
+            source.updateCentralRelation(newRelation);
+            destination.updateCentralRelation(newRelation);
+        } else {
+            node_manager_logger.error("Error while adding the new edge/relation for source = " +
+                                      std::string(source.id) + " destination = " + std::string(destination.id));
+        }
+    } else {
+        // TODO[tmkasun]: implement get edge support and return existing edge/relation if already exist
+        node_manager_logger.warn("Relation/Edge already exist for source = " + std::string(source.id) +
+                                 " destination = " + std::string(destination.id));
+    }
+    return newRelation;
+}
+
 NodeBlock *NodeManager::addNode(std::string nodeId) {
     unsigned int assignedNodeIndex;
     node_manager_logger.debug("Adding node index " + std::to_string(this->nextNodeIndex));
@@ -135,6 +157,7 @@ NodeBlock *NodeManager::addNode(std::string nodeId) {
 
 RelationBlock *NodeManager::addEdge(std::pair<std::string, std::string> edge) {
     std::unique_lock<std::mutex> guard(lockEdgeAdd);
+    guard.lock();
     NodeBlock *sourceNode = this->addNode(edge.first);
     NodeBlock *destNode = this->addNode(edge.second);
     RelationBlock *newRelation = this->addRelation(*sourceNode, *destNode);
@@ -142,7 +165,23 @@ RelationBlock *NodeManager::addEdge(std::pair<std::string, std::string> edge) {
         newRelation->setDestination(destNode);
         newRelation->setSource(sourceNode);
     }
+    guard.unlock();
+    node_manager_logger.debug("DEBUG: Source DB block address " + std::to_string(sourceNode->addr) +
+                              " Destination DB block address " + std::to_string(destNode->addr));
+    return newRelation;
+}
 
+RelationBlock *NodeManager::addCentralEdge(std::pair<std::string, std::string> edge) {
+    std::unique_lock<std::mutex> guard(lockEdgeAdd);
+    guard.lock();
+    NodeBlock *sourceNode = this->addNode(edge.first);
+    NodeBlock *destNode = this->addNode(edge.second);
+    RelationBlock *newRelation = this->addCentralRelation(*sourceNode, *destNode);
+    if (newRelation) {
+        newRelation->setDestination(destNode);
+        newRelation->setSource(sourceNode);
+    }
+    guard.unlock();
     node_manager_logger.debug("DEBUG: Source DB block address " + std::to_string(sourceNode->addr) +
                               " Destination DB block address " + std::to_string(destNode->addr));
     return newRelation;

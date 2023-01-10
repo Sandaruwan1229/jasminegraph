@@ -36,11 +36,11 @@ limitations under the License.
 #include "../query/algorithms/linkprediction/JasminGraphLinkPredictor.h"
 #include "../ml/trainer/JasmineGraphTrainingSchedular.h"
 #include "../ml/trainer/python-c-api/Python_C_API.h"
-#include "../centralstore/incremental/DataPublisher.h"
+#include "../nativestore/DataPublisher.h"
 #include "core/scheduler/JobScheduler.h"
 #include "../performance/metrics/PerformanceUtil.h"
 #include "core/CoreConstants.h"
-#include "../centralstore/incremental/RelationBlock.h"
+#include "../nativestore/RelationBlock.h"
 #include <cctype>
 
 using json = nlohmann::json;
@@ -84,11 +84,14 @@ void listen_to_kafka_topic(KafkaConnector *kstream, Partitioner &graphPartitione
         obj["destination"] = destinationJson;
         long temp_s = partitionedEdge[0].second;
         long temp_d = partitionedEdge[1].second;
-        workerClients.at((int) partitionedEdge[0].second)->publish(sourceJson.dump());
-        workerClients.at((int) partitionedEdge[1].second)->publish(destinationJson.dump());
+        workerClients.at((int) temp_s)->publish(sourceJson.dump());
+        workerClients.at((int) temp_d)->publish(destinationJson.dump());
 //      storing Node block
         if (temp_s ==temp_d){
-            workerClients.at((int) partitionedEdge[0].second)->publish_relation(obj.dump());
+            workerClients.at((int) temp_s)->publish_relation(obj.dump());
+        }else{
+            workerClients.at((int) temp_s)->publish_relation(obj.dump());
+            workerClients.at((int) temp_d)->publish_relation(obj.dump());
         }
     }
     graphPartitioner.printStats();

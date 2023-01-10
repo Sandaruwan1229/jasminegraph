@@ -97,10 +97,15 @@ class RelationBlock {
     std::map<std::string, char *> getAllProperties();
 
     static unsigned int nextRelationIndex;
+    static unsigned int nextCentralRelationIndex;
     static const unsigned long BLOCK_SIZE;  // Size of a relation record block in bytes
     static std::string DB_PATH;
     static std::fstream *relationsDB;
+    static std::fstream *centralrelationsDB;
     static const int RECORD_SIZE = sizeof(unsigned int);
+
+    static RelationBlock *addCentral(NodeBlock source, NodeBlock destination);
+    static RelationBlock *getCentral(unsigned int address);
 };
 
 #endif

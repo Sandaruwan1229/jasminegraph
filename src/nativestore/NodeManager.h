@@ -59,6 +59,10 @@ class NodeManager {
     NodeBlock* addNode(std::string);  // will redurn DB block address
     NodeBlock* get(std::string);
     std::list<NodeBlock> getGraph(int limit = 10);
+
+    RelationBlock *addCentralRelation(NodeBlock source, NodeBlock destination);
+
+    RelationBlock *addCentralEdge(std::pair<std::string, std::string> edge);
 };
 
 #endif
