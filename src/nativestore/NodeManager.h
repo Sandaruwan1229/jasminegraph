@@ -34,7 +34,7 @@ class NodeManager {
     unsigned int graphID = 0;
     unsigned int partitionID = 0;
     static const std::string FILE_MODE;
-    unsigned long INDEX_KEY_SIZE = 5;  // Size of an index key entry in bytes
+    unsigned long INDEX_KEY_SIZE = 6;  // Size of an index key entry in bytes
 
     int dbSize(std::string path);
     void persistNodeIndex();

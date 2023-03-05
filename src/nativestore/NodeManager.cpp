@@ -120,8 +120,8 @@ RelationBlock *NodeManager::addRelation(NodeBlock source, NodeBlock destination)
 
 RelationBlock *NodeManager::addCentralRelation(NodeBlock source, NodeBlock destination) {
     RelationBlock *newRelation = NULL;
-    if (source.edgeRef == 0 || destination.edgeRef == 0 ||
-        !source.searchRelation(destination)) {  // certainly a new relation block needed
+    if (source.centralEdgeRef == 0 || destination.centralEdgeRef == 0 ||
+        !source.searchCentralRelation(destination)) {  // certainly a new relation block needed
         newRelation = RelationBlock::addCentral(source, destination);
         if (newRelation) {
             source.updateCentralRelation(newRelation);
@@ -157,7 +157,7 @@ NodeBlock *NodeManager::addNode(std::string nodeId) {
 
 RelationBlock *NodeManager::addEdge(std::pair<std::string, std::string> edge) {
     std::unique_lock<std::mutex> guard(lockEdgeAdd);
-    guard.lock();
+
     NodeBlock *sourceNode = this->addNode(edge.first);
     NodeBlock *destNode = this->addNode(edge.second);
     RelationBlock *newRelation = this->addRelation(*sourceNode, *destNode);
@@ -165,15 +165,15 @@ RelationBlock *NodeManager::addEdge(std::pair<std::string, std::string> edge) {
         newRelation->setDestination(destNode);
         newRelation->setSource(sourceNode);
     }
-    guard.unlock();
+
     node_manager_logger.debug("DEBUG: Source DB block address " + std::to_string(sourceNode->addr) +
                               " Destination DB block address " + std::to_string(destNode->addr));
     return newRelation;
 }
 
 RelationBlock *NodeManager::addCentralEdge(std::pair<std::string, std::string> edge) {
-    std::unique_lock<std::mutex> guard(lockEdgeAdd);
-    guard.lock();
+//    std::unique_lock<std::mutex> guard(lockEdgeAdd);
+
     NodeBlock *sourceNode = this->addNode(edge.first);
     NodeBlock *destNode = this->addNode(edge.second);
     RelationBlock *newRelation = this->addCentralRelation(*sourceNode, *destNode);
@@ -181,7 +181,7 @@ RelationBlock *NodeManager::addCentralEdge(std::pair<std::string, std::string> e
         newRelation->setDestination(destNode);
         newRelation->setSource(sourceNode);
     }
-    guard.unlock();
+
     node_manager_logger.debug("DEBUG: Source DB block address " + std::to_string(sourceNode->addr) +
                               " Destination DB block address " + std::to_string(destNode->addr));
     return newRelation;
@@ -229,6 +229,7 @@ NodeBlock *NodeManager::get(std::string nodeId) {
     const unsigned int blockAddress = nodeIndex * NodeBlock::BLOCK_SIZE;
     NodeBlock::nodesDB->seekg(blockAddress);
     unsigned int edgeRef;
+    unsigned int centralEdgeRef;
     unsigned char edgeRefPID;
     unsigned int propRef;
     char usageBlock;
@@ -240,6 +241,10 @@ NodeBlock *NodeManager::get(std::string nodeId) {
 
     if (!NodeBlock::nodesDB->read(reinterpret_cast<char *>(&edgeRef), sizeof(unsigned int))) {
         node_manager_logger.error("Error while reading edge reference data from block " + std::to_string(blockAddress));
+    }
+
+    if (!NodeBlock::nodesDB->read(reinterpret_cast<char *>(&centralEdgeRef), sizeof(unsigned int))) {
+        node_manager_logger.error("Error while reading central edge reference data from block " + std::to_string(blockAddress));
     }
 
     if (!NodeBlock::nodesDB->read(reinterpret_cast<char *>(&edgeRefPID), sizeof(unsigned char))) {
@@ -258,7 +263,7 @@ NodeBlock *NodeManager::get(std::string nodeId) {
     node_manager_logger.debug("Length of label = " + std::to_string(strlen(label)));
     node_manager_logger.debug("DEBUG: raw edgeRef from DB (disk) " + std::to_string(edgeRef));
 
-    nodeBlockPointer = new NodeBlock(nodeId, blockAddress, propRef, edgeRef, edgeRefPID, label, usage);
+    nodeBlockPointer = new NodeBlock(nodeId, blockAddress, propRef, edgeRef,centralEdgeRef, edgeRefPID, label, usage);
 
     node_manager_logger.debug("DEBUG: nodeBlockPointer after creating the object edgeRef " +
                               std::to_string(nodeBlockPointer->edgeRef));
@@ -329,6 +334,10 @@ void NodeManager::close() {
     if (RelationBlock::relationsDB) {
         RelationBlock::relationsDB->flush();
         RelationBlock::relationsDB->close();
+    }
+    if (RelationBlock::centralrelationsDB) {
+        RelationBlock::centralrelationsDB->flush();
+        RelationBlock::centralrelationsDB->close();
     }
 }
 

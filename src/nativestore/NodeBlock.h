@@ -32,11 +32,12 @@ class NodeBlock {
     unsigned int addr = 0;
     std::string id = "";  // Node ID for this block ie: citation paper ID, Facebook accout ID, Twitter account ID etc
     char usage = false;   // Whether this block is in use or not
-    unsigned int edgeRef = 0;      // edges database block address for relations
+    unsigned int edgeRef = 0;      // edges database block address for relations size of edgeRef is 4 bytes
+    unsigned int centralEdgeRef = 0; // edges cut database block address for edge cut relations
     unsigned char edgeRefPID = 0;  // Partition ID of the edge reference
     unsigned int propRef = 0;      // Properties DB block address for node properties
 
-    static const unsigned long BLOCK_SIZE = 16;  // Size of a node block in bytes
+    static const unsigned long BLOCK_SIZE = 20;  // Size of a node block in bytes
     static const unsigned int LABEL_SIZE = 6;    // Size of a node label in bytes
     char label[LABEL_SIZE] = {
         0};  // Initialize with null chars label === ID if length(id) < 6 else ID will be stored as a Node's property
@@ -54,7 +55,7 @@ class NodeBlock {
         usage = true;
     };
 
-    NodeBlock(std::string id, unsigned int address, unsigned int propRef, unsigned int edgeRef,
+    NodeBlock(std::string id, unsigned int address, unsigned int propRef, unsigned int edgeRef,unsigned int centralEdgeRef,
               unsigned char edgeRefPID, char _label[], bool usage);
     bool updateRelation(RelationBlock *, bool relocateHead = true);
     void save();
@@ -74,6 +75,10 @@ class NodeBlock {
     bool updateCentralRelation(RelationBlock *newRelation, bool relocateHead  = true);
 
     RelationBlock *getCentralRelationHead();
+
+    bool setCentralRelationHead(RelationBlock newRelation);
+
+    RelationBlock *searchCentralRelation(NodeBlock withNode);
 };
 
 #endif

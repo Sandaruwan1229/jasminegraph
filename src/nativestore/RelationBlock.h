@@ -106,6 +106,22 @@ class RelationBlock {
 
     static RelationBlock *addCentral(NodeBlock source, NodeBlock destination);
     static RelationBlock *getCentral(unsigned int address);
+
+    void addCentralProperty(std::string name, char *value);
+
+    bool updateCentralRelationRecords(RelationOffsets recordOffset, unsigned int data);
+
+    bool setCentralPreviousSource(unsigned int newAddress);
+
+    bool setCentralPreviousDestination(unsigned int newAddress);
+
+    bool setCentralNextSource(unsigned int newAddress);
+
+    bool setCentralNextDestination(unsigned int newAddress);
+
+    RelationBlock *nextCentralSource();
+
+    RelationBlock *nextCentralDestination();
 };
 
 #endif

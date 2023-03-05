@@ -428,14 +428,27 @@ RelationBlock* RelationBlock::getCentral(unsigned int address) {
 
 RelationBlock* RelationBlock::nextSource() { return RelationBlock::get(this->source.nextRelationId); }
 
+RelationBlock* RelationBlock::nextCentralSource() { return RelationBlock::getCentral(this->source.nextRelationId); }
+
 RelationBlock* RelationBlock::previousSource() { return RelationBlock::get(this->source.preRelationId); }
 
 RelationBlock* RelationBlock::nextDestination() { return RelationBlock::get(this->destination.nextRelationId); }
+
+RelationBlock* RelationBlock::nextCentralDestination() { return RelationBlock::getCentral(this->destination.nextRelationId); }
 
 RelationBlock* RelationBlock::previousDestination() { return RelationBlock::get(this->destination.preRelationId); }
 
 bool RelationBlock::setNextSource(unsigned int newAddress) {
     if (this->updateRelationRecords(RelationOffsets::SOURCE_NEXT, newAddress)) {
+        this->source.nextRelationId = newAddress;
+    } else {
+        throw "Exception: Error while updating the relation next source address " + std::to_string(newAddress);
+    }
+    return true;
+}
+
+bool RelationBlock::setCentralNextSource(unsigned int newAddress) {
+    if (this->updateCentralRelationRecords(RelationOffsets::SOURCE_NEXT, newAddress)) {
         this->source.nextRelationId = newAddress;
     } else {
         throw "Exception: Error while updating the relation next source address " + std::to_string(newAddress);
@@ -452,6 +465,15 @@ bool RelationBlock::setPreviousSource(unsigned int newAddress) {
     return true;
 }
 
+bool RelationBlock::setCentralPreviousSource(unsigned int newAddress) {
+    if (this->updateCentralRelationRecords(RelationOffsets::SOURCE_PREVIOUS, newAddress)) {
+        this->source.preRelationId = newAddress;
+    } else {
+        throw "Exception: Error while updating the relation previous source address " + std::to_string(newAddress);
+    }
+    return true;
+}
+
 bool RelationBlock::setNextDestination(unsigned int newAddress) {
     if (this->updateRelationRecords(RelationOffsets::DESTINATION_NEXT, newAddress)) {
         this->destination.nextRelationId = newAddress;
@@ -461,8 +483,26 @@ bool RelationBlock::setNextDestination(unsigned int newAddress) {
     return true;
 }
 
+bool RelationBlock::setCentralNextDestination(unsigned int newAddress) {
+    if (this->updateCentralRelationRecords(RelationOffsets::DESTINATION_NEXT, newAddress)) {
+        this->destination.nextRelationId = newAddress;
+    } else {
+        throw "Exception: Error while updating the relation next destination address " + std::to_string(newAddress);
+    }
+    return true;
+}
+
 bool RelationBlock::setPreviousDestination(unsigned int newAddress) {
     if (this->updateRelationRecords(RelationOffsets::DESTINATION_PREVIOUS, newAddress)) {
+        this->destination.preRelationId = newAddress;
+    } else {
+        throw "Exception: Error while updating the relation previous destination address " + std::to_string(newAddress);
+    }
+    return true;
+}
+
+bool RelationBlock::setCentralPreviousDestination(unsigned int newAddress) {
+    if (this->updateCentralRelationRecords(RelationOffsets::DESTINATION_PREVIOUS, newAddress)) {
         this->destination.preRelationId = newAddress;
     } else {
         throw "Exception: Error while updating the relation previous destination address " + std::to_string(newAddress);
@@ -497,6 +537,20 @@ bool RelationBlock::updateRelationRecords(RelationOffsets recordOffset, unsigned
     return true;
 }
 
+bool RelationBlock::updateCentralRelationRecords(RelationOffsets recordOffset, unsigned int data) {
+    int offsetValue = static_cast<int>(recordOffset);
+    int dataOffset = RECORD_SIZE * offsetValue;
+    RelationBlock::centralrelationsDB->seekg(this->addr + dataOffset);
+    if (!RelationBlock::centralrelationsDB->write(reinterpret_cast<char*>(&data), RECORD_SIZE)) {
+        relation_block_logger.error("Error while updating relation data record offset " + std::to_string(offsetValue) +
+                                    "data " + std::to_string(data));
+        return false;
+    }
+    RelationBlock::centralrelationsDB->flush();
+    return true;
+}
+
+
 bool RelationBlock::isInUse() { return this->usage == '\1'; }
 unsigned int RelationBlock::nextRelationIndex = 1;  // Starting with 1 because of the 0 and '\0' differentiation issue
 unsigned int RelationBlock::nextCentralRelationIndex = 1;  // Starting with 1 because of the 0 and '\0' differentiation issue
@@ -517,6 +571,23 @@ void RelationBlock::addProperty(std::string name, char* value) {
         this->propertyAddress = this->getPropertyHead()->insert(name, value);
     }
 }
+void RelationBlock::addCentralProperty(std::string name, char* value) {
+    if (this->propertyAddress == 0) {
+        PropertyLink* newLink = PropertyLink::create(name, value);
+        if (newLink) {
+            this->propertyAddress = newLink->blockAddress;
+            // If it was an empty prop link before inserting, Then update the property reference of this node
+            // block
+            this->updateCentralRelationRecords(RelationOffsets::RELATION_PROPS, this->propertyAddress);
+        } else {
+            throw "Error occurred while adding a new property link to " + std::to_string(this->addr) + " node block";
+        }
+    } else {
+        this->propertyAddress = this->getPropertyHead()->insert(name, value);
+    }
+}
+
+
 PropertyLink* RelationBlock::getPropertyHead() { return PropertyLink::get(this->propertyAddress); }
 
 std::map<std::string, char*> RelationBlock::getAllProperties() {

@@ -59,7 +59,22 @@ std::string stream_topic_name;
 // Thread function
 void listen_to_kafka_topic(KafkaConnector *kstream, Partitioner &graphPartitioner, vector<DataPublisher*> &workerClients)
 {
-    while (true) {
+    bool native_store = true;
+
+    std::ofstream outfile("/home/sandaruwan/ubuntu/output.csv");  // Step 1
+    std::ofstream w_0_edge("/home/sandaruwan/ubuntu/0_edge_0.csv");
+    std::ofstream w_0_prop("/home/sandaruwan/ubuntu/w_0_prop.csv");
+    std::ofstream w_1_edge("/home/sandaruwan/ubuntu/0_edge_1.csv");
+    std::ofstream w_1_prop("/home/sandaruwan/ubuntu/w_1_prop.csv");
+
+    if (!w_1_edge.is_open() and !w_0_edge.is_open())                // Step 2
+    {
+        std::cerr << "Error: Cannot open output file.\n";
+    }
+    w_1_edge << "source,destination,timestamp" << std::endl;
+    w_0_edge << "source,destination,timestamp" << std::endl;
+    int count = 0;
+    while (native_store) {
         cppkafka::Message msg = kstream->consumer.poll();
         if (!msg || msg.get_error()) {
             continue;
@@ -84,9 +99,76 @@ void listen_to_kafka_topic(KafkaConnector *kstream, Partitioner &graphPartitione
         obj["destination"] = destinationJson;
         long temp_s = partitionedEdge[0].second;
         long temp_d = partitionedEdge[1].second;
+        if (count==0){
+            w_0_prop << "vertex" << ",";
+            for (auto& [key, value] : sourceJson["properties"].items()) {
+                w_0_prop << key << ",";
+                w_1_prop << key << ",";
+            }
+            w_0_prop << '\n';
+            w_1_prop << '\n';
+        }
+        if (temp_s ==temp_d){
+            if(temp_s==0){
+                w_0_edge << sourceJson["id"] << "," << destinationJson["id"] << "," << destinationJson["properties"].at("timestamp") << std::endl;
+                w_0_prop << sourceJson["id"] << ",";
+                for (auto& [key, value] : sourceJson["properties"].items()) {
+                    w_0_prop << value << ",";
+                }
+                w_0_prop << '\n';
+                w_0_prop << destinationJson["id"] << ",";
+                for (auto& [key, value] : destinationJson["properties"].items()) {
+                    w_0_prop << value << ",";
+                }
+                w_0_prop << '\n';
+            }else{
+                w_1_edge << sourceJson["id"] << "," << destinationJson["id"] << "," << destinationJson["properties"].at("timestamp") << std::endl;
+                w_1_prop << sourceJson["id"] << ",";
+                for (auto& [key, value] : sourceJson["properties"].items()) {
+                    w_1_prop << value << ",";
+                }
+                w_1_prop << '\n';
+                w_1_prop << destinationJson["id"] << ",";
+                for (auto& [key, value] : destinationJson["properties"].items()) {
+                    w_1_prop << value << ",";
+                }
+                w_1_prop << '\n';
+            }
+        }else{
+            w_0_edge << sourceJson["id"] << "," << destinationJson["id"] << "," << destinationJson["properties"].at("timestamp") << std::endl;
+            w_1_edge << sourceJson["id"] << "," << destinationJson["id"] << "," << destinationJson["properties"].at("timestamp") << std::endl;
+
+            w_0_prop << sourceJson["id"] << ",";
+            for (auto& [key, value] : sourceJson["properties"].items()) {
+                w_0_prop << value << ",";
+            }
+            w_0_prop << '\n';
+            w_0_prop << destinationJson["id"] << ",";
+            for (auto& [key, value] : destinationJson["properties"].items()) {
+                w_0_prop << value << ",";
+            }
+            w_0_prop << '\n';
+
+            w_1_prop << sourceJson["id"] << ",";
+            for (auto& [key, value] : sourceJson["properties"].items()) {
+                w_1_prop << value << ",";
+            }
+            w_1_prop << '\n';
+            w_1_prop << destinationJson["id"] << ",";
+            for (auto& [key, value] : destinationJson["properties"].items()) {
+                w_1_prop << value << ",";
+            }
+            w_1_prop << '\n';
+        }
+        count++;
+        cout << count << endl;
+
+//      storing Node block
         workerClients.at((int) temp_s)->publish(sourceJson.dump());
         workerClients.at((int) temp_d)->publish(destinationJson.dump());
-//      storing Node block
+
+
+//      storing edge node
         if (temp_s ==temp_d){
             workerClients.at((int) temp_s)->publish_relation(obj.dump());
         }else{
@@ -94,6 +176,13 @@ void listen_to_kafka_topic(KafkaConnector *kstream, Partitioner &graphPartitione
             workerClients.at((int) temp_d)->publish_relation(obj.dump());
         }
     }
+    outfile.close();
+    w_0_edge.close();
+    w_1_edge.close();
+    w_0_prop.close();
+    w_1_prop.close();
+
+
     graphPartitioner.printStats();
 }
 
@@ -672,14 +761,16 @@ void *frontendservicesesion(std::string masterIP, int connFd, SQLiteDBInterface 
                 continue;
             }
 
-//          create kafka consumer and graph partitioner
-            kstream = new KafkaConnector(configs);
-            Partitioner graphPartitioner(numberOfPartitions, 1, spt::Algorithms::HASH);
-
             string topic_name_s(topic_name);
             topic_name_s = utils.trim_copy(topic_name_s, " \f\n\r\t\v");
             stream_topic_name=topic_name_s;
+
+//          create kafka consumer and graph partitioner
+            kstream = new KafkaConnector(configs);
+            Partitioner graphPartitioner(numberOfPartitions, 1, spt::Algorithms::FENNEL);
+
             kstream->Subscribe(topic_name_s);
+
             frontend_logger.log("Start listening to " + topic_name_s, "info");
             input_stream_handler = thread(listen_to_kafka_topic, kstream,std::ref(graphPartitioner),std::ref(workerClients));
 

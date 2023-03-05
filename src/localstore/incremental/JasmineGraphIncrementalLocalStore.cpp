@@ -82,8 +82,6 @@ std::string JasmineGraphIncrementalLocalStore::addEdgeFromString(std::string edg
         auto destinationJson = edgeJson["destination"];
 
         std::string sId = std::string(sourceJson["id"]);
-//        NodeBlock* nodeBlock = this->nm->addNode(sId);
-
         std::string dId = std::string(destinationJson["id"]);
 
         RelationBlock* newRelation = this->nm->addEdge({sId, dId});
@@ -100,20 +98,20 @@ std::string JasmineGraphIncrementalLocalStore::addEdgeFromString(std::string edg
             }
         }
 
-        if (sourceJson.contains("properties")) {
-            auto sourceProps = sourceJson["properties"];
-            for (auto it = sourceProps.begin(); it != sourceProps.end(); it++) {
-                strcpy(value, it.value().get<std::string>().c_str());
-                newRelation->getSource()->addProperty(std::string(it.key()), &value[0]);
-            }
-        }
-        if (destinationJson.contains("properties")) {
-            auto destProps = destinationJson["properties"];
-            for (auto it = destProps.begin(); it != destProps.end(); it++) {
-                strcpy(value, it.value().get<std::string>().c_str());
-                newRelation->getDestination()->addProperty(std::string(it.key()), &value[0]);
-            }
-        }
+//        if (sourceJson.contains("properties")) {
+//            auto sourceProps = sourceJson["properties"];
+//            for (auto it = sourceProps.begin(); it != sourceProps.end(); it++) {
+//                strcpy(value, it.value().get<std::string>().c_str());
+//                newRelation->getSource()->addProperty(std::string(it.key()), &value[0]);
+//            }
+//        }
+//        if (destinationJson.contains("properties")) {
+//            auto destProps = destinationJson["properties"];
+//            for (auto it = destProps.begin(); it != destProps.end(); it++) {
+//                strcpy(value, it.value().get<std::string>().c_str());
+//                newRelation->getDestination()->addProperty(std::string(it.key()), &value[0]);
+//            }
+//        }
 
         incremental_localstore_logger.log("Added successfully!", "Info");
     }
@@ -136,36 +134,34 @@ std::string JasmineGraphIncrementalLocalStore::addCentralEdgeFromString(std::str
         auto destinationJson = edgeJson["destination"];
 
         std::string sId = std::string(sourceJson["id"]);
-//        NodeBlock* nodeBlock = this->nm->addNode(sId);
-
         std::string dId = std::string(destinationJson["id"]);
 
-        RelationBlock* newRelation = this->nm->addCentralEdge({sId, dId});
-        if (!newRelation) {
+        RelationBlock* newCentralRelation = this->nm->addCentralEdge({sId, dId});
+        if (!newCentralRelation) {
             return "";
         }
         char value[PropertyLink::MAX_VALUE_SIZE] = {};
 
-//        if (edgeJson.contains("properties")) {
-//            auto edgeProperties = edgeJson["properties"];
-//            for (auto it = edgeProperties.begin(); it != edgeProperties.end(); it++) {
-//                strcpy(value, it.value().get<std::string>().c_str());
-//                newRelation->addProperty(std::string(it.key()), &value[0]);
-//            }
-//        }
-//
+        if (edgeJson.contains("properties")) {
+            auto edgeProperties = edgeJson["properties"];
+            for (auto it = edgeProperties.begin(); it != edgeProperties.end(); it++) {
+                strcpy(value, it.value().get<std::string>().c_str());
+                newCentralRelation->addCentralProperty(std::string(it.key()), &value[0]);
+            }
+        }
+
 //        if (sourceJson.contains("properties")) {
 //            auto sourceProps = sourceJson["properties"];
 //            for (auto it = sourceProps.begin(); it != sourceProps.end(); it++) {
 //                strcpy(value, it.value().get<std::string>().c_str());
-//                newRelation->getSource()->addProperty(std::string(it.key()), &value[0]);
+//                newCentralRelation->getSource()->addProperty(std::string(it.key()), &value[0]);
 //            }
 //        }
 //        if (destinationJson.contains("properties")) {
 //            auto destProps = destinationJson["properties"];
 //            for (auto it = destProps.begin(); it != destProps.end(); it++) {
 //                strcpy(value, it.value().get<std::string>().c_str());
-//                newRelation->getDestination()->addProperty(std::string(it.key()), &value[0]);
+//                newCentralRelation->getDestination()->addProperty(std::string(it.key()), &value[0]);
 //            }
 //        }
 

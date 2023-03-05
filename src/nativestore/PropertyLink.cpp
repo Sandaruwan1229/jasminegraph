@@ -164,6 +164,7 @@ PropertyLink* PropertyLink::get(unsigned int propertyBlockAddress) {
         PropertyLink::propertiesDB->seekg(propertyBlockAddress);
 
         if (!PropertyLink::propertiesDB->read(reinterpret_cast<char*>(&propertyName), PropertyLink::MAX_NAME_SIZE)) {
+            PropertyLink::propertiesDB->rdstate();
             property_link_logger.error("Error while reading property name from block = " +
                                        std::to_string(propertyBlockAddress));
         }
