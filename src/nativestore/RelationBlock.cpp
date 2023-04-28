@@ -20,6 +20,7 @@ limitations under the License.
 #include "NodeManager.h"
 
 Logger relation_block_logger;
+pthread_mutex_t lockAddProperty;
 
 RelationBlock* RelationBlock::add(NodeBlock source, NodeBlock destination) {
     int RECORD_SIZE = sizeof(unsigned int);
@@ -30,10 +31,23 @@ RelationBlock* RelationBlock::add(NodeBlock source, NodeBlock destination) {
     sourceData.address = source.addr;
     destinationData.address = destination.addr;
 
-    unsigned int relationPropAddr = 0;
+//    unsigned int relationPropAddr = this;
 
-    long relationBlockAddress = RelationBlock::nextRelationIndex * RelationBlock::BLOCK_SIZE;  // Block size is 4 * 11
+    long relationBlockAddress = RelationBlock::nextRelationIndex * RelationBlock::BLOCK_SIZE;  // Block size is 4 * 13
+
     RelationBlock::relationsDB->seekg(relationBlockAddress);
+    if (!RelationBlock::relationsDB->write(reinterpret_cast<char*>(&source.nodeId), RECORD_SIZE)) {
+        relation_block_logger.error("ERROR: Error while writing  sourceAddr " +
+                                    std::to_string(source.nodeId) + " into relation block address " +
+                                    std::to_string(relationBlockAddress));
+        return NULL;
+    }
+    if (!RelationBlock::relationsDB->write(reinterpret_cast<char*>(&destination.nodeId), RECORD_SIZE)) {
+        relation_block_logger.error("ERROR: Error while writing  destinationAddr " +
+                                    std::to_string(destination.nodeId) + " into relation block address " +
+                                    std::to_string(relationBlockAddress));
+        return NULL;
+    }
     if (!RelationBlock::relationsDB->write(reinterpret_cast<char*>(&sourceData.address), RECORD_SIZE)) {
         relation_block_logger.error("ERROR: Error while writing relation destAddr " +
                                     std::to_string(sourceData.address) + " into relation block address " +
@@ -104,16 +118,16 @@ RelationBlock* RelationBlock::add(NodeBlock source, NodeBlock destination) {
         return NULL;
     }
 
-    if (!RelationBlock::relationsDB->write(reinterpret_cast<char*>(&relationPropAddr), RECORD_SIZE)) {
+    if (!RelationBlock::relationsDB->write(reinterpret_cast<char*>(&(this->propertyAddress)), RECORD_SIZE)) {
         relation_block_logger.error("ERROR: Error while writing relation property address " +
-                                    std::to_string(relationPropAddr) + " into relation block address " +
+                                    std::to_string(this->propertyAddress) + " into relation block address " +
                                     std::to_string(relationBlockAddress));
         return NULL;
     }
 
     RelationBlock::nextRelationIndex += 1;
     RelationBlock::relationsDB->flush();
-    return new RelationBlock(relationBlockAddress, sourceData, destinationData, relationPropAddr);
+    return new RelationBlock(relationBlockAddress, sourceData, destinationData, this->propertyAddress);
 }
 
 RelationBlock* RelationBlock::addCentral(NodeBlock source, NodeBlock destination) {
@@ -129,6 +143,18 @@ RelationBlock* RelationBlock::addCentral(NodeBlock source, NodeBlock destination
 
     long relationBlockAddress = RelationBlock::nextCentralRelationIndex * RelationBlock::BLOCK_SIZE;  // Block size is 4 * 11
     RelationBlock::centralrelationsDB->seekg(relationBlockAddress);
+    if (!RelationBlock::centralrelationsDB->write(reinterpret_cast<char*>(&source.nodeId), RECORD_SIZE)) {
+        relation_block_logger.error("ERROR: Error while writing  sourceAddr " +
+                                    std::to_string(source.nodeId) + " into relation block address " +
+                                    std::to_string(relationBlockAddress));
+        return NULL;
+    }
+    if (!RelationBlock::centralrelationsDB->write(reinterpret_cast<char*>(&destination.nodeId), RECORD_SIZE)) {
+        relation_block_logger.error("ERROR: Error while writing  destinationAddr " +
+                                    std::to_string(destination.nodeId) + " into relation block address " +
+                                    std::to_string(relationBlockAddress));
+        return NULL;
+    }
     if (!RelationBlock::centralrelationsDB->write(reinterpret_cast<char*>(&sourceData.address), RECORD_SIZE)) {
         relation_block_logger.error("ERROR: Error while writing relation destAddr " +
                                     std::to_string(sourceData.address) + " into relation block address " +
@@ -219,7 +245,7 @@ RelationBlock* RelationBlock::get(unsigned int address) {
         throw "Exception: Invalid relation block address !!\n received address = " + address;
     }
 
-    RelationBlock::relationsDB->seekg(address);
+    RelationBlock::relationsDB->seekg(address + RECORD_SIZE*2);
     NodeRelation source;
     NodeRelation destination;
     unsigned int propertyReference;
@@ -326,7 +352,7 @@ RelationBlock* RelationBlock::getCentral(unsigned int address) {
         throw "Exception: Invalid relation block address !!\n received address = " + address;
     }
 
-    RelationBlock::centralrelationsDB->seekg(address);
+    RelationBlock::centralrelationsDB->seekg(address + RECORD_SIZE*2);
     NodeRelation source;
     NodeRelation destination;
     unsigned int propertyReference;
@@ -557,12 +583,16 @@ unsigned int RelationBlock::nextCentralRelationIndex = 1;  // Starting with 1 be
 
 
 void RelationBlock::addProperty(std::string name, char* value) {
+
     if (this->propertyAddress == 0) {
         PropertyLink* newLink = PropertyLink::create(name, value);
         if (newLink) {
             this->propertyAddress = newLink->blockAddress;
             // If it was an empty prop link before inserting, Then update the property reference of this node
             // block
+            relation_block_logger.info("New edge property name  = " + std::string(name));
+            relation_block_logger.info("property addr  = " + std::to_string(this->propertyAddress));
+
             this->updateRelationRecords(RelationOffsets::RELATION_PROPS, this->propertyAddress);
         } else {
             throw "Error occurred while adding a new property link to " + std::to_string(this->addr) + " node block";
@@ -570,6 +600,7 @@ void RelationBlock::addProperty(std::string name, char* value) {
     } else {
         this->propertyAddress = this->getPropertyHead()->insert(name, value);
     }
+
 }
 void RelationBlock::addCentralProperty(std::string name, char* value) {
     if (this->propertyAddress == 0) {
@@ -629,7 +660,7 @@ NodeBlock* RelationBlock::getDestination() {
     }
 }
 
-const unsigned long RelationBlock::BLOCK_SIZE = RelationBlock::RECORD_SIZE * 11;
+const unsigned long RelationBlock::BLOCK_SIZE = RelationBlock::RECORD_SIZE * 13;
 // One relation block holds 11 recods such as source addres, destination address, source next relation address etc.
 // and one record is typically 4 bytes (size of unsigned int)
 std::string RelationBlock::DB_PATH = "/home/sandaruwan/ubuntu/software/jasminegraph/streamStore/relations.db";

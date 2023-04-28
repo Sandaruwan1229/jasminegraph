@@ -30,17 +30,19 @@ struct NodeRelation {
 };
 
 enum class RelationOffsets : int {
-    SOURCE = 0,
-    DESTINATION = 1,
-    SOURCE_NEXT = 2,
-    SOURCE_NEXT_PID = 3,
-    SOURCE_PREVIOUS = 4,
-    SOURCE_PREVIOUS_PID = 5,
-    DESTINATION_NEXT = 6,
-    DESTINATION_NEXT_PID = 7,
-    DESTINATION_PREVIOUS = 8,
-    DESTINATION_PREVIOUS_PID = 9,
-    RELATION_PROPS = 10,
+    SOURCE_ID = 0,
+    DESTINATION_ID =1,
+    SOURCE = 2,
+    DESTINATION = 3,
+    SOURCE_NEXT = 4,
+    SOURCE_NEXT_PID = 5,
+    SOURCE_PREVIOUS = 6,
+    SOURCE_PREVIOUS_PID = 7,
+    DESTINATION_NEXT = 8,
+    DESTINATION_NEXT_PID = 9,
+    DESTINATION_PREVIOUS = 10,
+    DESTINATION_PREVIOUS_PID = 11,
+    RELATION_PROPS = 12,
 };
 
 /**
@@ -61,14 +63,21 @@ class RelationBlock {
     NodeBlock *destinationBlock;
 
    public:
+    RelationBlock(NodeBlock source, NodeBlock destination){
+        this->sourceBlock = &source;
+        this->destinationBlock = &destination;
+    }
+
+
     RelationBlock(unsigned int addr, NodeRelation source, NodeRelation destination, unsigned int propertyAddress)
         : addr(addr), source(source), destination(destination), propertyAddress(propertyAddress){};
 
+
     char usage;
-    unsigned int addr;  // Block size * block ID for this block
+    unsigned int addr =0;  // Block size * block ID for this block
     NodeRelation source;
     NodeRelation destination;
-    unsigned int propertyAddress;
+    unsigned int propertyAddress =0;
     PropertyLink *propertyHead = NULL;
 
     void save(std::fstream *cursor);
@@ -90,7 +99,7 @@ class RelationBlock {
     RelationBlock *nextDestination();
     RelationBlock *previousDestination();
 
-    static RelationBlock *add(NodeBlock, NodeBlock);
+    RelationBlock *add(NodeBlock, NodeBlock);
     static RelationBlock *get(unsigned int);
     void addProperty(std::string, char *);
     PropertyLink *getPropertyHead();

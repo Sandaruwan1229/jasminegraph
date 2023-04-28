@@ -2184,19 +2184,21 @@ void *instanceservicesession(void *dummyPt) {
             } else {
                 incrementalLocalStoreInstance = incrementalLocalStoreMap[graphIdentifier];
             }
-            auto edgeJson = json::parse(nodeString);
-            if (edgeJson.contains("source") && edgeJson.contains("destination")){
-                auto sourceJson = edgeJson["source"];
-                auto destinationJson = edgeJson["destination"];
-                if ((int) sourceJson["pid"] == (int) destinationJson["pid"]){
-                    incrementalLocalStoreInstance->addEdgeFromString(nodeString);
-                }else{
-                    incrementalLocalStoreInstance->addCentralEdgeFromString(nodeString);
-                }
-            }
-            else{
-                incrementalLocalStoreInstance->addNodeFromString(nodeString);
-            }
+            incrementalLocalStoreInstance->addGraphEdgeFromString(nodeString);
+
+//            auto edgeJson = json::parse(nodeString);
+//            if (edgeJson.contains("source") && edgeJson.contains("destination")){
+//                auto sourceJson = edgeJson["source"];
+//                auto destinationJson = edgeJson["destination"];
+//                if ((int) sourceJson["pid"] == (int) destinationJson["pid"]){
+//                    incrementalLocalStoreInstance->addEdgeFromString(nodeString);
+//                }else{
+//                    incrementalLocalStoreInstance->addCentralEdgeFromString(nodeString);
+//                }
+//            }
+//            else{
+//                incrementalLocalStoreInstance->addNodeFromString(nodeString);
+//            }
             send(connFd, JasmineGraphInstanceProtocol::GRAPH_STREAM_END_OF_EDGE.c_str(),
                  JasmineGraphInstanceProtocol::GRAPH_STREAM_END_OF_EDGE.size(), 0);
             instance_logger.log("Sent CRLF string to mark the end", "info");
