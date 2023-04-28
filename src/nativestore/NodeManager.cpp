@@ -25,7 +25,11 @@ limitations under the License.
 #include "iostream"
 
 Logger node_manager_logger;
-std::mutex lockEdgeAdd;
+//std::mutex lockEdgeAdd;
+//std::mutex lockCentralEdgeAdd;
+pthread_mutex_t lockEdgeAdd;
+pthread_mutex_t lockCentralEdgeAdd;
+
 NodeManager::NodeManager(GraphConfig gConfig) {
     this->graphID = gConfig.graphID;
     this->partitionID = gConfig.partitionID;
@@ -54,6 +58,8 @@ NodeManager::NodeManager(GraphConfig gConfig) {
         new std::fstream(dbPrefix + "_relations.db", std::ios::in | std::ios::out | openMode | std::ios::binary);
     RelationBlock::centralrelationsDB =
             new std::fstream(dbPrefix + "_central_relations.db", std::ios::in | std::ios::out | openMode | std::ios::binary);
+//    RelationBlock::centralpropertiesDB =
+//            new std::fstream(dbPrefix + "_central_relations.db", std::ios::in | std::ios::out | openMode | std::ios::binary);
     // TODO (tmkasun): set PropertyLink nextPropertyIndex after validating by modulus check from file number of bytes
 
     if (dbSize(nodesDBPath) % NodeBlock::BLOCK_SIZE != 0) {
@@ -102,7 +108,8 @@ RelationBlock *NodeManager::addRelation(NodeBlock source, NodeBlock destination)
     RelationBlock *newRelation = NULL;
     if (source.edgeRef == 0 || destination.edgeRef == 0 ||
         !source.searchRelation(destination)) {  // certainly a new relation block needed
-        newRelation = RelationBlock::add(source, destination);
+        RelationBlock *relationBlock = new RelationBlock(source,destination);
+        newRelation = relationBlock->add(source, destination);
         if (newRelation) {
             source.updateRelation(newRelation);
             destination.updateRelation(newRelation);
@@ -114,6 +121,7 @@ RelationBlock *NodeManager::addRelation(NodeBlock source, NodeBlock destination)
         // TODO[tmkasun]: implement get edge support and return existing edge/relation if already exist
         node_manager_logger.warn("Relation/Edge already exist for source = " + std::string(source.id) +
                                  " destination = " + std::string(destination.id));
+//        newRelation = source.searchRelation(destination);
     }
     return newRelation;
 }
@@ -132,8 +140,9 @@ RelationBlock *NodeManager::addCentralRelation(NodeBlock source, NodeBlock desti
         }
     } else {
         // TODO[tmkasun]: implement get edge support and return existing edge/relation if already exist
-        node_manager_logger.warn("Relation/Edge already exist for source = " + std::string(source.id) +
+        node_manager_logger.warn("Central Relation/Edge already exist for source = " + std::string(source.id) +
                                  " destination = " + std::string(destination.id));
+//        newRelation = source.searchCentralRelation(destination);
     }
     return newRelation;
 }
@@ -143,7 +152,8 @@ NodeBlock *NodeManager::addNode(std::string nodeId) {
     node_manager_logger.debug("Adding node index " + std::to_string(this->nextNodeIndex));
     if (this->nodeIndex.find(nodeId) == this->nodeIndex.end()) {
         node_manager_logger.debug("Can't find NodeId (" + nodeId + ") in the index database");
-        NodeBlock *sourceBlk = new NodeBlock(nodeId, this->nextNodeIndex * NodeBlock::BLOCK_SIZE);
+        unsigned int vertexId = std::stoul(nodeId);
+        NodeBlock *sourceBlk = new NodeBlock(nodeId, vertexId,this->nextNodeIndex * NodeBlock::BLOCK_SIZE);
         this->nodeIndex.insert({nodeId, this->nextNodeIndex});
         assignedNodeIndex = this->nextNodeIndex;
         this->nextNodeIndex++;
@@ -156,7 +166,8 @@ NodeBlock *NodeManager::addNode(std::string nodeId) {
 }
 
 RelationBlock *NodeManager::addEdge(std::pair<std::string, std::string> edge) {
-    std::unique_lock<std::mutex> guard(lockEdgeAdd);
+
+    pthread_mutex_lock(&lockEdgeAdd);
 
     NodeBlock *sourceNode = this->addNode(edge.first);
     NodeBlock *destNode = this->addNode(edge.second);
@@ -165,6 +176,7 @@ RelationBlock *NodeManager::addEdge(std::pair<std::string, std::string> edge) {
         newRelation->setDestination(destNode);
         newRelation->setSource(sourceNode);
     }
+    pthread_mutex_unlock(&lockEdgeAdd);
 
     node_manager_logger.debug("DEBUG: Source DB block address " + std::to_string(sourceNode->addr) +
                               " Destination DB block address " + std::to_string(destNode->addr));
@@ -172,7 +184,10 @@ RelationBlock *NodeManager::addEdge(std::pair<std::string, std::string> edge) {
 }
 
 RelationBlock *NodeManager::addCentralEdge(std::pair<std::string, std::string> edge) {
-//    std::unique_lock<std::mutex> guard(lockEdgeAdd);
+//    std::unique_lock<std::mutex> guard1(lockCentralEdgeAdd);
+//
+//    guard1.lock();
+    pthread_mutex_lock(&lockCentralEdgeAdd);
 
     NodeBlock *sourceNode = this->addNode(edge.first);
     NodeBlock *destNode = this->addNode(edge.second);
@@ -181,7 +196,9 @@ RelationBlock *NodeManager::addCentralEdge(std::pair<std::string, std::string> e
         newRelation->setDestination(destNode);
         newRelation->setSource(sourceNode);
     }
+    pthread_mutex_unlock(&lockCentralEdgeAdd);
 
+//    guard1.unlock();
     node_manager_logger.debug("DEBUG: Source DB block address " + std::to_string(sourceNode->addr) +
                               " Destination DB block address " + std::to_string(destNode->addr));
     return newRelation;
@@ -228,6 +245,7 @@ NodeBlock *NodeManager::get(std::string nodeId) {
     unsigned int nodeIndex = this->nodeIndex[nodeId];
     const unsigned int blockAddress = nodeIndex * NodeBlock::BLOCK_SIZE;
     NodeBlock::nodesDB->seekg(blockAddress);
+    unsigned int vertexId;
     unsigned int edgeRef;
     unsigned int centralEdgeRef;
     unsigned char edgeRefPID;
@@ -238,7 +256,9 @@ NodeBlock *NodeManager::get(std::string nodeId) {
     if (!NodeBlock::nodesDB->get(usageBlock)) {
         node_manager_logger.error("Error while reading usage data from block " + std::to_string(blockAddress));
     }
-
+    if (!NodeBlock::nodesDB->read(reinterpret_cast<char*>(&vertexId), sizeof(unsigned int))) {
+        node_manager_logger.error("Error while reading nodeId  data from block " + std::to_string(blockAddress));
+    }
     if (!NodeBlock::nodesDB->read(reinterpret_cast<char *>(&edgeRef), sizeof(unsigned int))) {
         node_manager_logger.error("Error while reading edge reference data from block " + std::to_string(blockAddress));
     }
@@ -263,7 +283,7 @@ NodeBlock *NodeManager::get(std::string nodeId) {
     node_manager_logger.debug("Length of label = " + std::to_string(strlen(label)));
     node_manager_logger.debug("DEBUG: raw edgeRef from DB (disk) " + std::to_string(edgeRef));
 
-    nodeBlockPointer = new NodeBlock(nodeId, blockAddress, propRef, edgeRef,centralEdgeRef, edgeRefPID, label, usage);
+    nodeBlockPointer = new NodeBlock(nodeId,vertexId, blockAddress, propRef, edgeRef,centralEdgeRef, edgeRefPID, label, usage);
 
     node_manager_logger.debug("DEBUG: nodeBlockPointer after creating the object edgeRef " +
                               std::to_string(nodeBlockPointer->edgeRef));
